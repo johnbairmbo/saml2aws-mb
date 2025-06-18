@@ -41,6 +41,8 @@ type ConvergedResponse struct {
 	URLBeginAuth            string             `json:"urlBeginAuth"`
 	URLEndAuth              string             `json:"urlEndAuth"`
 	URLPost                 string             `json:"urlPost"`
+	URLFidoLogin            string             `json:"urlFidoLogin"`
+	FIsFidoSupported        bool               `json:"fIsFidoSupported"`
 	SErrorCode              string             `json:"sErrorCode"`
 	SErrTxt                 string             `json:"sErrTxt"`
 	SPOSTUsername           string             `json:"sPOST_Username"`
@@ -192,6 +194,12 @@ AuthProcessor:
 		case strings.Contains(resBodyStr, "ConvergedTFA"):
 			logger.Debug("processing ConvergedTFA")
 			res, err = ac.processConvergedTFA(res, resBodyStr, loginDetails)
+		case strings.Contains(resBodyStr, "$Config") && ac.shouldUseFidoAuthentication(resBodyStr, loginDetails):
+			logger.Debug("processing FIDO2 authentication")
+			if err := ac.unmarshalEmbeddedJson(resBodyStr, &convergedResponse); err != nil {
+				return samlAssertion, errors.Wrap(err, "unmarshal error for FIDO2")
+			}
+			res, err = ac.processFidoAuthentication(convergedResponse, loginDetails)
 		case strings.Contains(resBodyStr, "SAMLRequest"):
 			logger.Debug("processing SAMLRequest")
 			res, err = ac.processSAMLRequest(res, resBodyStr)
@@ -464,9 +472,7 @@ func (ac *Client) processMfa(mfas []userProof, convergedResponse *ConvergedRespo
 				mfaReq.AdditionalAuthData = verifyCode
 			}
 		}
-		if mfaReq.AuthMethodID == "FIDO2" && i == 0 {
-			prompter.Display("Press the button on your security key to authenticate...")
-		}
+
 		if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
 			if mfaResp.Entropy == 0 {
 				prompter.Display("Phone approval required.")
@@ -786,4 +792,17 @@ func (ac *Client) getSamlAssertion(resBodyStr string) (string, error) {
 	})
 
 	return samlAssertion, nil
+}
+
+func (ac *Client) shouldUseFidoAuthentication(resBodyStr string, loginDetails *creds.LoginDetails) bool {
+	if ac.mfa != "FIDO2" && ac.mfa != "Auto" {
+		return false
+	}
+
+	var tempResponse ConvergedResponse
+	if err := ac.unmarshalEmbeddedJson(resBodyStr, &tempResponse); err != nil {
+		return false
+	}
+
+	return tempResponse.FIsFidoSupported && tempResponse.URLFidoLogin != ""
 }
