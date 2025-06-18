@@ -464,6 +464,9 @@ func (ac *Client) processMfa(mfas []userProof, convergedResponse *ConvergedRespo
 				mfaReq.AdditionalAuthData = verifyCode
 			}
 		}
+		if mfaReq.AuthMethodID == "FIDO2" && i == 0 {
+			prompter.Display("Press the button on your security key to authenticate...")
+		}
 		if mfaReq.AuthMethodID == "PhoneAppNotification" && i == 0 {
 			if mfaResp.Entropy == 0 {
 				prompter.Display("Phone approval required.")
