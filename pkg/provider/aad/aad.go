@@ -795,7 +795,7 @@ func (ac *Client) getSamlAssertion(resBodyStr string) (string, error) {
 }
 
 func (ac *Client) shouldUseFidoAuthentication(resBodyStr string, loginDetails *creds.LoginDetails) bool {
-	if ac.mfa != "FIDO2" && ac.mfa != "Auto" {
+	if ac.idpAccount.MFA != "FIDO2" && ac.idpAccount.MFA != "Auto" {
 		return false
 	}
 
