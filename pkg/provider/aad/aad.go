@@ -804,5 +804,13 @@ func (ac *Client) shouldUseFidoAuthentication(resBodyStr string, loginDetails *c
 		return false
 	}
 
-	return tempResponse.FIsFidoSupported && tempResponse.URLFidoLogin != ""
+	if !tempResponse.FIsFidoSupported || tempResponse.URLFidoLogin == "" {
+		return false
+	}
+
+	if ac.idpAccount.MFA == "FIDO2" {
+		return true
+	}
+
+	return len(tempResponse.ArrUserProofs) == 0
 }
