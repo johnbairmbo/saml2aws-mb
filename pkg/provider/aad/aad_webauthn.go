@@ -23,8 +23,8 @@ type AzureADFidoResponse struct {
 }
 
 func (ac *Client) processFidoAuthentication(convergedResponse *ConvergedResponse, loginDetails *creds.LoginDetails) (*http.Response, error) {
-	if !convergedResponse.FIsFidoSupported || convergedResponse.URLFidoLogin == "" {
-		return nil, errors.New("FIDO2 authentication not supported or configured")
+	if convergedResponse.URLFidoLogin == "" {
+		return nil, errors.New("FIDO2 authentication URL not available - Azure AD may not have FIDO2 properly configured")
 	}
 
 	req, err := http.NewRequest("GET", convergedResponse.URLFidoLogin, nil)
