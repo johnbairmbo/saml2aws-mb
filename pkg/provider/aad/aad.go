@@ -192,13 +192,13 @@ AuthProcessor:
 			logger.Debug("processing KmsiInterrupt")
 			res, err = ac.processKmsiInterrupt(res, resBodyStr)
 		case strings.Contains(resBodyStr, "$Config") && ac.shouldUseFidoAuthentication(resBodyStr, loginDetails):
-			logger.Debug("processing FIDO2 authentication")
+			logger.Debug("processing FIDO2 authentication - shouldUseFidoAuthentication returned true")
 			if err := ac.unmarshalEmbeddedJson(resBodyStr, &convergedResponse); err != nil {
 				return samlAssertion, errors.Wrap(err, "unmarshal error for FIDO2")
 			}
 			res, err = ac.processFidoAuthentication(convergedResponse, loginDetails)
 		case strings.Contains(resBodyStr, "ConvergedTFA"):
-			logger.Debug("processing ConvergedTFA")
+			logger.Debug("processing ConvergedTFA - FIDO2 detection did not trigger")
 			res, err = ac.processConvergedTFA(res, resBodyStr, loginDetails)
 		case strings.Contains(resBodyStr, "SAMLRequest"):
 			logger.Debug("processing SAMLRequest")
@@ -795,22 +795,31 @@ func (ac *Client) getSamlAssertion(resBodyStr string) (string, error) {
 }
 
 func (ac *Client) shouldUseFidoAuthentication(resBodyStr string, loginDetails *creds.LoginDetails) bool {
+	logger.Debugf("shouldUseFidoAuthentication: MFA setting is %s", ac.idpAccount.MFA)
+	
 	if ac.idpAccount.MFA != "FIDO2" && ac.idpAccount.MFA != "Auto" {
+		logger.Debug("shouldUseFidoAuthentication: MFA not FIDO2 or Auto, returning false")
 		return false
 	}
 
 	var tempResponse ConvergedResponse
 	if err := ac.unmarshalEmbeddedJson(resBodyStr, &tempResponse); err != nil {
+		logger.Debugf("shouldUseFidoAuthentication: unmarshal error: %v", err)
 		return false
 	}
 
+	logger.Debugf("shouldUseFidoAuthentication: FIsFidoSupported=%t, URLFidoLogin=%s", tempResponse.FIsFidoSupported, tempResponse.URLFidoLogin)
+	
 	if !tempResponse.FIsFidoSupported || tempResponse.URLFidoLogin == "" {
+		logger.Debug("shouldUseFidoAuthentication: FIDO2 not supported or URLFidoLogin empty")
 		return false
 	}
 
 	if ac.idpAccount.MFA == "FIDO2" {
+		logger.Debug("shouldUseFidoAuthentication: explicit FIDO2, returning true")
 		return true
 	}
 
+	logger.Debugf("shouldUseFidoAuthentication: Auto mode, ArrUserProofs length=%d", len(tempResponse.ArrUserProofs))
 	return len(tempResponse.ArrUserProofs) == 0
 }
