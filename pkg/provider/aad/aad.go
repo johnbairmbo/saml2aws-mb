@@ -802,6 +802,11 @@ func (ac *Client) shouldUseFidoAuthentication(resBodyStr string, loginDetails *c
 		return false
 	}
 
+	if ac.idpAccount.MFA == "FIDO2" {
+		logger.Debug("shouldUseFidoAuthentication: explicit FIDO2 requested, forcing FIDO2 authentication")
+		return true
+	}
+
 	var tempResponse ConvergedResponse
 	if err := ac.unmarshalEmbeddedJson(resBodyStr, &tempResponse); err != nil {
 		logger.Debugf("shouldUseFidoAuthentication: unmarshal error: %v", err)
@@ -811,13 +816,8 @@ func (ac *Client) shouldUseFidoAuthentication(resBodyStr string, loginDetails *c
 	logger.Debugf("shouldUseFidoAuthentication: FIsFidoSupported=%t, URLFidoLogin=%s", tempResponse.FIsFidoSupported, tempResponse.URLFidoLogin)
 	
 	if !tempResponse.FIsFidoSupported || tempResponse.URLFidoLogin == "" {
-		logger.Debug("shouldUseFidoAuthentication: FIDO2 not supported or URLFidoLogin empty")
+		logger.Debug("shouldUseFidoAuthentication: FIDO2 not supported or URLFidoLogin empty in Auto mode")
 		return false
-	}
-
-	if ac.idpAccount.MFA == "FIDO2" {
-		logger.Debug("shouldUseFidoAuthentication: explicit FIDO2, returning true")
-		return true
 	}
 
 	logger.Debugf("shouldUseFidoAuthentication: Auto mode, ArrUserProofs length=%d", len(tempResponse.ArrUserProofs))
