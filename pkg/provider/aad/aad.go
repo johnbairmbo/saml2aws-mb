@@ -191,15 +191,15 @@ AuthProcessor:
 		case strings.Contains(resBodyStr, "KmsiInterrupt"):
 			logger.Debug("processing KmsiInterrupt")
 			res, err = ac.processKmsiInterrupt(res, resBodyStr)
-		case strings.Contains(resBodyStr, "ConvergedTFA"):
-			logger.Debug("processing ConvergedTFA")
-			res, err = ac.processConvergedTFA(res, resBodyStr, loginDetails)
 		case strings.Contains(resBodyStr, "$Config") && ac.shouldUseFidoAuthentication(resBodyStr, loginDetails):
 			logger.Debug("processing FIDO2 authentication")
 			if err := ac.unmarshalEmbeddedJson(resBodyStr, &convergedResponse); err != nil {
 				return samlAssertion, errors.Wrap(err, "unmarshal error for FIDO2")
 			}
 			res, err = ac.processFidoAuthentication(convergedResponse, loginDetails)
+		case strings.Contains(resBodyStr, "ConvergedTFA"):
+			logger.Debug("processing ConvergedTFA")
+			res, err = ac.processConvergedTFA(res, resBodyStr, loginDetails)
 		case strings.Contains(resBodyStr, "SAMLRequest"):
 			logger.Debug("processing SAMLRequest")
 			res, err = ac.processSAMLRequest(res, resBodyStr)
